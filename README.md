@@ -1,4 +1,5 @@
 # BlazCTF 2024
+<img width="824" alt="Scoreboard" src="https://github.com/user-attachments/assets/4827a2a1-1512-472b-8a65-7f91f1a8ec2e">
 
 ## Challenges
 - [Bigen Layer](./bigen-layer)
