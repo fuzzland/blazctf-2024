@@ -1,0 +1,91 @@
+[workspace]
+members = [
+    "anvil",
+    "anvil/core",
+    "anvil/rpc",
+    "anvil/server",
+    "abi",
+    "binder",
+    "cast",
+    "chisel",
+    "cli",
+    "cli/test-utils",
+    "common",
+    "config",
+    "doc",
+    "evm",
+    "fmt",
+    "forge",
+    "macros",
+    "macros/impl",
+    "ui",
+    "utils",
+]
+resolver = "2"
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch,
+# and we don't rely on it for debugging that much
+debug = 0
+
+# These speed up local tests
+[profile.dev.package.ethers-solc]
+opt-level = 3
+
+[profile.dev.package.revm]
+opt-level = 3
+
+# These speed up all forge script related integration tests
+[profile.test.package.axum]
+opt-level = 3
+
+# Local "release" mode, more optimized than dev but much faster to compile than release
+[profile.local]
+inherits = "dev"
+opt-level = 3
+# Set this to 1 or 2 to get more useful backtraces
+debug = 0
+panic = 'unwind'
+# better recompile times
+incremental = true
+codegen-units = 16
+
+[profile.release]
+# Optimize for binary size, but keep loop vectorization
+opt-level = "s"
+# Performance optimizations
+lto = "fat"
+debug = 0
+strip = true
+panic = "abort"
+codegen-units = 1
+
+[workspace.dependencies]
+ethers = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-addressbook = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-core = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-contract = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-contract-abigen = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-providers = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-signers = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-middleware = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-etherscan = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+ethers-solc = { git = "https://github.com/gakonst/ethers-rs", default-features = false }
+
+solang-parser = "=0.3.1"
+
+#[patch."https://github.com/gakonst/ethers-rs"]
+#ethers = { path = "../ethers-rs/ethers" }
+#ethers-addressbook = { path = "../ethers-rs/ethers-addressbook" }
+#ethers-contract = { path = "../ethers-rs/ethers-contract" }
+#ethers-contract-abigen = { path = "../ethers-rs/ethers-contract/ethers-contract-abigen" }
+#ethers-core = { path = "../ethers-rs/ethers-core" }
+#ethers-etherscan = { path = "../ethers-rs/ethers-etherscan" }
+#ethers-middleware = { path = "../ethers-rs/ethers-middleware" }
+#ethers-providers = { path = "../ethers-rs/ethers-providers" }
+#ethers-signers = { path = "../ethers-rs/ethers-signers" }
+#ethers-solc = { path = "../ethers-rs/ethers-solc" }
+
+[patch.crates-io]
+# release/v25
+revm = { path = "../revm/crates/revm" }

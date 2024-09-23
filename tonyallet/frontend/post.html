@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Social Wallet</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" integrity="sha512-jB0TkTBeQC9ZSkBqDhdmfTv1qdfbWpGE72yJ/01Srq6hEzZIz2xkz1e57p9ai7IeHMwEG7HpzG6NdptChif5Pg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #0a192f;
+            color: #8892b0;
+            line-height: 1.6;
+            padding: 10px;
+            max-width: 100%;
+            margin: 0 auto;
+            background-image: 
+                radial-gradient(#233554 1px, transparent 1px),
+                radial-gradient(#233554 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+        h1, h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: #64ffda;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px rgba(100, 255, 218, 0.5);
+        }
+        h1 {
+            font-size: 1.8em;
+            border-bottom: 2px solid #64ffda;
+            padding-bottom: 10px;
+        }
+        h2 {
+            font-size: 1.4em;
+            margin-top: 20px;
+        }
+        div {
+            background-color: #112240;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 10px rgba(100, 255, 218, 0.1);
+            margin-bottom: 20px;
+            border: 1px solid #233554;
+        }
+        input[type="text"], textarea {
+            width: calc(100% - 24px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #233554;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: 'Roboto Mono', monospace;
+            background-color: #0a192f;
+            color: #8892b0;
+        }
+        button {
+            background-color: transparent;
+            color: #64ffda;
+            border: 2px solid #64ffda;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: rgba(100, 255, 218, 0.1);
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.5);
+        }
+        #postDetails {
+            background-color: #1d2d50;
+            padding: 15px;
+            border-left: 3px solid #64ffda;
+            margin-top: 15px;
+        }
+        #walletAddress {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #1d2d50;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px dashed #64ffda;
+            word-break: break-all;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="goBack()">Back</button>
+    
+    <div id="getPost">
+        <div id="postDetails"></div>
+    </div>
+    
+    <script>
+        async function getPost(postId) {
+            try {
+                const response = await fetch(`/posts/${postId}`, {
+                    method: 'GET'
+                });
+                const data = await response.json();
+                const postDetails = document.getElementById('postDetails');
+                postDetails.innerHTML = DOMPurify.sanitize(
+                    `
+                    <h3>${data.title}</h3>
+                    <p>${data.content}</p>
+                    <p>Author Hash: ${data.author}</p>
+                    <p>Timestamp: ${new Date().toISOString()}</p>
+                `, { USE_PROFILES: { html: true } }
+                );
+            } catch (error) {
+                console.error('Error fetching post:', error);
+                alert('Failed to retrieve post. Please check the UUID and try again.');
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        const query = decodeURIComponent(window.location.search)
+        const pid = query.split("=")[1];
+        getPost(pid);
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+FROM ghcr.io/foundry-rs/foundry:nightly-03ea54c63e33e3175a6f44d8cfe3718bd6c962ba AS foundry
+
+COPY project /project
+
+# artifacts must be the same path
+RUN true && \
+    cd /project && \
+    forge build --out /artifacts/out --cache-path /artifacts/cache && \
+    true
+
+FROM ghcr.io/fuzzland/blaz-ctf-2024-server:latest
+
+COPY --chown=user:user . /home/user/challenge/
+COPY --from=foundry --chown=user:user /artifacts /artifacts

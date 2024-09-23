@@ -1,0 +1,31 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: safusol
+  annotations:
+    type: PWN
+    name: safusol
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "blaz{n1cec0splayc0stume}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 30
+  network:
+    public: true
+  healthcheck:
+    # TIP: disable the healthcheck during development
+    enabled: false
+  podTemplate:
+    template:
+      spec:
+        serviceAccountName: default
+        automountServiceAccountToken: true
+        containers:
+          - name: challenge
+            resources:
+              limits:
+                memory: 4G
+                cpu: "1"

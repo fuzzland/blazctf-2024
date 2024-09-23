@@ -1,0 +1,31 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: bigen-layer
+  annotations:
+    type: PWN
+    name: BigenLayer
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "blaz{B1gLay3rs_oF_Pancak3s}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 0
+  network:
+    public: true
+  healthcheck:
+    # TIP: disable the healthcheck during development
+    enabled: false
+  podTemplate:
+    template:
+      spec:
+        serviceAccountName: default
+        automountServiceAccountToken: true
+        containers:
+          - name: challenge
+            resources:
+              limits:
+                memory: 4G
+                cpu: "1"

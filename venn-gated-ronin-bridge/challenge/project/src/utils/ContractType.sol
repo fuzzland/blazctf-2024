@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+enum ContractType {
+  UNKNOWN, // 0
+  PAUSE_ENFORCER, // 1
+  BRIDGE, // 2
+  BRIDGE_TRACKING, // 3
+  GOVERNANCE_ADMIN, // 4
+  MAINTENANCE, // 5
+  SLASH_INDICATOR, // 6
+  STAKING_VESTING, // 7
+  VALIDATOR, // 8
+  STAKING, // 9
+  RONIN_TRUSTED_ORGANIZATION, // 10
+  BRIDGE_MANAGER, // 11
+  BRIDGE_SLASH, // 12
+  BRIDGE_REWARD, // 13
+  FAST_FINALITY_TRACKING, // 14
+  PROFILE // 15
+
+}

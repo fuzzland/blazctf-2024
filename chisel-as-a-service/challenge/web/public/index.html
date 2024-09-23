@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chisel as a Service</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/sakura.css/css/sakura.css"
+      type="text/css"
+    />
+  </head>
+
+  <body>
+    <main>
+      <h1>Chisel as a Service</h1>
+      <div>
+        <input
+          id="code"
+          type="text"
+          value="1 + 2"
+          required
+          style="width: 90%"
+        />
+        <input id="run" type="button" value="Run" />
+      </div>
+      <pre><code id="out"></code></pre>
+      <script>
+        const $ = document.getElementById.bind(document);
+
+        $("run").addEventListener("click", async () => {
+          const code = $("code").value;
+          if (!code) return;
+
+          const { uuid } = await fetch(
+            `./run?code=${encodeURIComponent(code)}`
+          ).then((r) => r.json());
+          location.hash = uuid;
+        });
+
+        const show = async () => {
+          const uuid = location.hash.slice(1);
+          const out = await fetch(`./out/${uuid}`).then((r) => r.text());
+          $("out").textContent = out
+            .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, "")
+            .split("\n").slice(1).join("\n");
+        };
+        window.addEventListener("hashchange", show);
+        if (location.hash) show();
+      </script>
+    </main>
+  </body>
+</html>

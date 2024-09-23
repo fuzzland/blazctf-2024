@@ -1,0 +1,31 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: solalloc
+  annotations:
+    type: PWN
+    name: solalloc
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "blaz{S13F_W0uldnT_Bel1ev3_Th1s}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 30
+  network:
+    public: true
+  healthcheck:
+    # TIP: disable the healthcheck during development
+    enabled: false
+  podTemplate:
+    template:
+      spec:
+        serviceAccountName: default
+        automountServiceAccountToken: true
+        containers:
+          - name: challenge
+            resources:
+              limits:
+                memory: 4G
+                cpu: "1"

@@ -1,0 +1,13 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index cb4a754..4727083 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -36,7 +36,7 @@ futures = "0.3"
+ 
+ parking_lot = "0.12"
+ 
+-revm = { version = "14", features = ["std", "serde"] }
++revm = { path = "../revm/crates/revm", features = ["std", "serde"] }
+ rustc-hash = "2.0"
+ 
+ serde = "1.0"

@@ -1,0 +1,19 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: venn-gated-ronin-bridge
+  annotations:
+    type: Venn Gated Ronin Bridge
+    name: ETH Pwn
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "blaz{unBrea4l3_r0n1n_br1d9e}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 0
+  network:
+    public: true
+  healthcheck:
+    enabled: false

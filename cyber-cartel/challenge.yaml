@@ -1,0 +1,19 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: cyber-cartel
+  annotations:
+    type: Pwn
+    name: Cyber Cartel
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "blaz{N0_Cry_for_Cyber_C4rtel}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 0
+  network:
+    public: true
+  healthcheck:
+    enabled: false

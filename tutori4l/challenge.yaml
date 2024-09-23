@@ -1,0 +1,19 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: tutori4l
+  annotations:
+    type: Pwn
+    name: Tutori4l
+    description: "certik-audited"
+    author: "0xAWM"
+    tags: "pwn"
+    flag: "blaz{C3rtik_Seal_of_Just_Maybe}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 0
+  network:
+    public: true
+  healthcheck:
+    enabled: false

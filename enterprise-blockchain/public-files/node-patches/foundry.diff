@@ -1,0 +1,125 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 27f29332..5b0458dc 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -5121,7 +5121,6 @@ dependencies = [
+ [[package]]
+ name = "revm"
+ version = "3.3.0"
+-source = "git+https://github.com/bluealloy/revm/?branch=release/v25#88337924f4d16ed1f5e4cde12a03d0cb755cd658"
+ dependencies = [
+  "auto_impl",
+  "revm-interpreter",
+@@ -5133,7 +5132,6 @@ dependencies = [
+ [[package]]
+ name = "revm-interpreter"
+ version = "1.1.2"
+-source = "git+https://github.com/bluealloy/revm/?branch=release/v25#88337924f4d16ed1f5e4cde12a03d0cb755cd658"
+ dependencies = [
+  "derive_more",
+  "enumn",
+@@ -5145,9 +5143,10 @@ dependencies = [
+ [[package]]
+ name = "revm-precompile"
+ version = "2.0.3"
+-source = "git+https://github.com/bluealloy/revm/?branch=release/v25#88337924f4d16ed1f5e4cde12a03d0cb755cd658"
+ dependencies = [
+  "k256",
++ "libc",
++ "nix",
+  "num",
+  "once_cell",
+  "revm-primitives",
+@@ -5161,7 +5160,6 @@ dependencies = [
+ [[package]]
+ name = "revm-primitives"
+ version = "1.1.2"
+-source = "git+https://github.com/bluealloy/revm/?branch=release/v25#88337924f4d16ed1f5e4cde12a03d0cb755cd658"
+ dependencies = [
+  "auto_impl",
+  "bitvec 1.0.1",
+diff --git a/Cargo.toml b/Cargo.toml
+index 251b2ce1..e865fc75 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -87,4 +87,5 @@ solang-parser = "=0.3.1"
+ #ethers-solc = { path = "../ethers-rs/ethers-solc" }
+ 
+ [patch.crates-io]
+-revm = { git = "https://github.com/bluealloy/revm/", branch = "release/v25" }
++# release/v25
++revm = { path = "../revm/crates/revm" }
+diff --git a/evm/src/executor/inspector/cheatcodes/util.rs b/evm/src/executor/inspector/cheatcodes/util.rs
+index abb9aad0..22af590d 100644
+--- a/evm/src/executor/inspector/cheatcodes/util.rs
++++ b/evm/src/executor/inspector/cheatcodes/util.rs
+@@ -431,7 +431,7 @@ pub fn check_if_fixed_gas_limit<DB: DatabaseExt>(
+ 
+ /// Small utility function that checks if an address is a potential precompile.
+ pub fn is_potential_precompile(address: H160) -> bool {
+-    address < H160::from_low_u64_be(10) && address != H160::zero()
++    address < H160::from_low_u64_be(10000) && address != H160::zero()
+ }
+ 
+ #[cfg(test)]
+diff --git a/evm/src/executor/inspector/fuzzer.rs b/evm/src/executor/inspector/fuzzer.rs
+index 3a4762c5..96b45349 100644
+--- a/evm/src/executor/inspector/fuzzer.rs
++++ b/evm/src/executor/inspector/fuzzer.rs
+@@ -4,9 +4,10 @@ use crate::{
+ };
+ use bytes::Bytes;
+ use revm::{
+-    interpreter::{CallInputs, CallScheme, Gas, InstructionResult, Interpreter},
++    interpreter::{CallInputs, Gas, InstructionResult, Interpreter},
+     Database, EVMData, Inspector,
+ };
++use revm::primitives::{CallScheme};
+ 
+ /// An inspector that can fuzz and collect data for that effect.
+ #[derive(Clone, Debug)]
+diff --git a/evm/src/executor/inspector/tracer.rs b/evm/src/executor/inspector/tracer.rs
+index 6a6404c2..41ee2713 100644
+--- a/evm/src/executor/inspector/tracer.rs
++++ b/evm/src/executor/inspector/tracer.rs
+@@ -16,10 +16,10 @@ use ethers::{
+ use revm::{
+     inspectors::GasInspector,
+     interpreter::{
+-        opcode, return_ok, CallInputs, CallScheme, CreateInputs, Gas, InstructionResult,
++        opcode, return_ok, CallInputs, CreateInputs, Gas, InstructionResult,
+         Interpreter,
+     },
+-    primitives::{B160, B256},
++    primitives::{B160, B256,CallScheme},
+     Database, EVMData, Inspector, JournalEntry,
+ };
+ use std::{cell::RefCell, rc::Rc};
+diff --git a/evm/src/lib.rs b/evm/src/lib.rs
+index e0326fa6..bf9a3493 100644
+--- a/evm/src/lib.rs
++++ b/evm/src/lib.rs
+@@ -30,7 +30,8 @@ pub mod utils;
+ pub use ethers::types::Address;
+ pub use hashbrown::{self, HashMap};
+ pub use revm;
+-use revm::interpreter::{CallScheme, CreateScheme};
++use revm::interpreter::{CreateScheme};
++use revm::primitives::{CallScheme};
+ use serde::{Deserialize, Serialize};
+ 
+ /// Stores the caller address to be used as _sender_ account for:
+diff --git a/evm/src/trace/mod.rs b/evm/src/trace/mod.rs
+index 9f276479..22e2071e 100644
+--- a/evm/src/trace/mod.rs
++++ b/evm/src/trace/mod.rs
+@@ -10,7 +10,8 @@ use ethers::{
+ use foundry_common::contracts::{ContractsByAddress, ContractsByArtifact};
+ use hashbrown::HashMap;
+ use node::CallTraceNode;
+-use revm::interpreter::{opcode, CallContext, InstructionResult, Memory, Stack};
++use revm::interpreter::{opcode, InstructionResult, Memory, Stack};
++use revm::primitives::{CallContext};
+ use serde::{Deserialize, Serialize};
+ use std::{
+     collections::{BTreeMap, HashSet},

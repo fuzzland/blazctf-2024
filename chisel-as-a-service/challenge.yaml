@@ -1,0 +1,19 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: chisel-as-a-service
+  annotations:
+    type: PWN
+    name: Chisel as a Service
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "blaz{flagflagflag}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 0
+  network:
+    public: true
+  healthcheck:
+    enabled: false

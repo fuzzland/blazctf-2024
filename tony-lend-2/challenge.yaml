@@ -1,0 +1,31 @@
+apiVersion: kctf.dev/v1
+kind: Challenge
+metadata:
+  name: tony-lend-2
+  annotations:
+    type: PWN
+    name: Tony Lend
+    description: ""
+    author: ""
+    tags: "pwn"
+    flag: "bl4z{T0ny_l3nd5_h4cK3d_2nd_t1m3_n0_m0r3_c3rt1k}"
+
+spec:
+  deployed: true
+  powDifficultySeconds: 0
+  network:
+    public: true
+  healthcheck:
+    # TIP: disable the healthcheck during development
+    enabled: false
+  podTemplate:
+    template:
+      spec:
+        serviceAccountName: default
+        automountServiceAccountToken: true
+        containers:
+          - name: challenge
+            resources:
+              limits:
+                memory: 4G
+                cpu: "1"

@@ -1,0 +1,3 @@
+FROM ghcr.io/fuzzland/blaz-ctf-2024-server:latest
+
+COPY --chown=user:user . /home/user/challenge/

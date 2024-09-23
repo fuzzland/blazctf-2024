@@ -1,0 +1,629 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index c11f775fa..700733d71 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -897,6 +897,7 @@ dependencies = [
+  "parking_lot",
+  "rand",
+  "revm",
++ "revmc-context",
+  "serde",
+  "serde_json",
+  "serde_repr",
+@@ -3935,9 +3936,12 @@ dependencies = [
+  "foundry-test-utils",
+  "futures",
+  "itertools 0.13.0",
++ "libc",
+  "parking_lot",
+  "revm",
+  "revm-inspectors",
++ "revmc-builtins",
++ "revmc-context",
+  "rustc-hash",
+  "serde",
+  "serde_json",
+@@ -4019,8 +4023,6 @@ dependencies = [
+ [[package]]
+ name = "foundry-fork-db"
+ version = "0.3.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c88cb03fc4bd87856fc4d0ad38fd067f85c7c6306bf794202fc50a897449837b"
+ dependencies = [
+  "alloy-primitives",
+  "alloy-provider",
+@@ -7146,9 +7148,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "revm"
+-version = "14.0.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1f719e28cc6fdd086f8bc481429e587740d20ad89729cec3f5f5dd7b655474df"
++version = "14.0.0"
+ dependencies = [
+  "auto_impl",
+  "cfg-if",
+@@ -7161,12 +7161,11 @@ dependencies = [
+ 
+ [[package]]
+ name = "revm-inspectors"
+-version = "0.6.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "48184032103bb23788e42e42c7c85207f5b0b8a248b09ea8f5233077f35ab56e"
++version = "0.7.0"
+ dependencies = [
+  "alloy-primitives",
+- "alloy-rpc-types",
++ "alloy-rpc-types-eth",
++ "alloy-rpc-types-trace",
+  "alloy-sol-types",
+  "anstyle",
+  "colorchoice",
+@@ -7178,9 +7177,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "revm-interpreter"
+-version = "10.0.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "959ecbc36802de6126852479844737f20194cf8e6718e0c30697d306a2cca916"
++version = "10.0.0"
+ dependencies = [
+  "revm-primitives",
+  "serde",
+@@ -7188,9 +7185,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "revm-precompile"
+-version = "11.0.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "6e25f604cb9db593ca3013be8c00f310d6790ccb1b7d8fbbdd4660ec8888043a"
++version = "11.0.0"
+ dependencies = [
+  "aurora-engine-modexp",
+  "blst",
+@@ -7208,9 +7203,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "revm-primitives"
+-version = "9.0.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "0ccb981ede47ccf87c68cebf1ba30cdbb7ec935233ea305f3dfff4c1e10ae541"
++version = "9.0.0"
+ dependencies = [
+  "alloy-eips",
+  "alloy-primitives",
+@@ -7226,6 +7219,34 @@ dependencies = [
+  "serde",
+ ]
+ 
++[[package]]
++name = "revmc-backend"
++version = "0.1.0"
++dependencies = [
++ "eyre",
++ "ruint",
++]
++
++[[package]]
++name = "revmc-builtins"
++version = "0.1.0"
++dependencies = [
++ "paste",
++ "revm-interpreter",
++ "revm-primitives",
++ "revmc-backend",
++ "revmc-context",
++ "tracing",
++]
++
++[[package]]
++name = "revmc-context"
++version = "0.1.0"
++dependencies = [
++ "revm-interpreter",
++ "revm-primitives",
++]
++
+ [[package]]
+ name = "rfc6979"
+ version = "0.4.0"
+diff --git a/Cargo.toml b/Cargo.toml
+index fbf9be9b8..9e9d8fbfa 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -165,14 +165,20 @@ foundry-linking = { path = "crates/linking" }
+ # solc & compilation utilities
+ foundry-block-explorers = { version = "0.7.1", default-features = false }
+ foundry-compilers = { version = "0.11.0", default-features = false }
+-foundry-fork-db = "0.3"
++foundry-fork-db = { path = "../foundry-fork-db" }
+ solang-parser = "=0.3.3"
+ 
+ ## revm
+ # no default features to avoid c-kzg
+-revm = { version = "14.0.1", default-features = false }
+-revm-primitives = { version = "9.0.1", default-features = false }
+-revm-inspectors = { version = "0.6", features = ["serde"] }
++revm = { path = "../revm/crates/revm", default-features = false }
++revm-primitives = { path = "../revm/crates/primitives", default-features = false }
++revm-inspectors = { path = "../revm-inspectors", features = ["serde"] }
++
++## revmc
++revmc = { path = "../revmc/crates/revmc", features = ["llvm-prefer-dynamic"] }
++revmc-build = { path = "../revmc/crates/revmc-build" }
++revmc-context = { path = "../revmc/crates/revmc-context" }
++revmc-builtins = { path = "../revmc/crates/revmc-builtins" }
+ 
+ ## ethers
+ ethers-contract-abigen = { version = "2.0.14", default-features = false }
+diff --git a/crates/anvil/Cargo.toml b/crates/anvil/Cargo.toml
+index 77faec1f1..2eb829d19 100644
+--- a/crates/anvil/Cargo.toml
++++ b/crates/anvil/Cargo.toml
+@@ -43,7 +43,10 @@ revm = { workspace = true, features = [
+     "serde",
+     "memory_limit",
+     "c-kzg",
++    "optional_balance_check",
++    "optional_disable_eip3074",
+ ] }
++revmc-context.workspace = true
+ alloy-primitives = { workspace = true, features = ["serde"] }
+ alloy-consensus = { workspace = true, features = ["k256", "kzg"] }
+ alloy-contract = { workspace = true, features = ["pubsub"] }
+diff --git a/crates/anvil/core/src/eth/mod.rs b/crates/anvil/core/src/eth/mod.rs
+index 70c62ed56..22f5d2dd4 100644
+--- a/crates/anvil/core/src/eth/mod.rs
++++ b/crates/anvil/core/src/eth/mod.rs
+@@ -769,6 +769,10 @@ pub enum EthRequest {
+     /// Reorg the chain
+     #[cfg_attr(feature = "serde", serde(rename = "anvil_reorg",))]
+     Reorg(ReorgOptions),
++
++    /// Jit compile an address
++    #[cfg_attr(feature = "serde", serde(rename = "blaz_jitCompile", with = "sequence"))]
++    JitCompile(Address),
+ }
+ 
+ /// Represents ethereum JSON-RPC API
+diff --git a/crates/anvil/src/eth/api.rs b/crates/anvil/src/eth/api.rs
+index f856fef42..808880ddc 100644
+--- a/crates/anvil/src/eth/api.rs
++++ b/crates/anvil/src/eth/api.rs
+@@ -451,6 +451,7 @@ impl EthApi {
+             EthRequest::Reorg(reorg_options) => {
+                 self.anvil_reorg(reorg_options).await.to_rpc_result()
+             }
++            EthRequest::JitCompile(addr) => self.jit_compile(addr).await.to_rpc_result(),
+         }
+     }
+ 
+@@ -2855,6 +2856,11 @@ impl EthApi {
+             TypedTransaction::Legacy(_) => Ok(()),
+         }
+     }
++
++    /// Jit compile an address
++    pub async fn jit_compile(&self, address: Address) -> Result<()> {
++        self.backend.jit_compile(address).await
++    }
+ }
+ 
+ fn required_marker(provided_nonce: u64, on_chain_nonce: u64, from: Address) -> Vec<TxMarker> {
+diff --git a/crates/anvil/src/eth/backend/executor.rs b/crates/anvil/src/eth/backend/executor.rs
+index c84ad5200..8fc896798 100644
+--- a/crates/anvil/src/eth/backend/executor.rs
++++ b/crates/anvil/src/eth/backend/executor.rs
+@@ -10,7 +10,7 @@ use crate::{
+ };
+ use alloy_consensus::{Header, Receipt, ReceiptWithBloom};
+ use alloy_eips::eip2718::Encodable2718;
+-use alloy_primitives::{Bloom, BloomInput, Log, B256};
++use alloy_primitives::{Address, Bloom, BloomInput, Log, B256};
+ use anvil_core::eth::{
+     block::{Block, BlockInfo, PartialHeader},
+     transaction::{
+@@ -109,6 +109,8 @@ pub struct TransactionExecutor<'a, Db: ?Sized, Validator: TransactionValidator>
+     pub print_logs: bool,
+     /// Precompiles to inject to the EVM.
+     pub precompile_factory: Option<Arc<dyn PrecompileFactory>>,
++    /// JIT Addr
++    pub jit_addr: Option<Address>,
+ }
+ 
+ impl<'a, DB: Db + ?Sized, Validator: TransactionValidator> TransactionExecutor<'a, DB, Validator> {
+@@ -310,10 +312,17 @@ impl<'a, 'b, DB: Db + ?Sized, Validator: TransactionValidator> Iterator
+         if self.print_logs {
+             inspector = inspector.with_log_collector();
+         }
++        if self.jit_addr.is_some() {
++            inspector = Inspector::new_jit_inspector(self.jit_addr.unwrap());
++        }
+ 
+         let exec_result = {
+-            let mut evm =
+-                foundry_evm::utils::new_evm_with_inspector(&mut *self.db, env, &mut inspector);
++            let mut evm = if self.jit_addr.is_some() {
++                foundry_evm::utils::new_evm_with_jit(&mut inspector, &mut *self.db, env)
++            } else {
++                foundry_evm::utils::new_evm_with_inspector(&mut *self.db, env, &mut inspector)
++            };
++
+             if let Some(factory) = &self.precompile_factory {
+                 inject_precompiles(&mut evm, factory.precompiles());
+             }
+diff --git a/crates/anvil/src/eth/backend/mem/inspector.rs b/crates/anvil/src/eth/backend/mem/inspector.rs
+index b354a9a5c..269f5d0a5 100644
+--- a/crates/anvil/src/eth/backend/mem/inspector.rs
++++ b/crates/anvil/src/eth/backend/mem/inspector.rs
+@@ -6,6 +6,7 @@ use foundry_evm::{
+     call_inspectors,
+     decode::decode_console_logs,
+     inspectors::{LogCollector, TracingInspector},
++    jit_helper::JitHelper,
+     revm::{
+         interpreter::{
+             CallInputs, CallOutcome, CreateInputs, CreateOutcome, EOFCreateInputs, Interpreter,
+@@ -25,9 +26,20 @@ pub struct Inspector {
+     pub log_collector: Option<LogCollector>,
+     /// Whether to enable Alphanet support
+     pub alphanet: bool,
++    /// JIT inspector
++    pub jit: Option<JitHelper>,
+ }
+ 
+ impl Inspector {
++    pub fn new_jit_inspector(target: Address) -> Self {
++        Self {
++            tracer: None,
++            log_collector: None,
++            alphanet: false,
++            jit: Some(JitHelper { target, resolved: None }),
++        }
++    }
++
+     /// Called after the inspecting the evm
+     ///
+     /// This will log all `console.sol` logs
+@@ -180,6 +192,13 @@ impl<DB: Database> InspectorExt<DB> for Inspector {
+     fn is_alphanet(&self) -> bool {
+         self.alphanet
+     }
++
++    fn get_function(&mut self, addr: Address) -> Option<revmc_context::EvmCompilerFn> {
++        if let Some(jit) = &mut self.jit {
++            return <JitHelper as InspectorExt<DB>>::get_function(jit, addr);
++        }
++        None
++    }
+ }
+ 
+ /// Prints all the logs
+diff --git a/crates/anvil/src/eth/backend/mem/mod.rs b/crates/anvil/src/eth/backend/mem/mod.rs
+index 5e71892a3..26a89bdd3 100644
+--- a/crates/anvil/src/eth/backend/mem/mod.rs
++++ b/crates/anvil/src/eth/backend/mem/mod.rs
+@@ -34,7 +34,7 @@ use crate::{
+ };
+ use alloy_consensus::{Account, Header, Receipt, ReceiptWithBloom};
+ use alloy_eips::eip4844::MAX_BLOBS_PER_BLOCK;
+-use alloy_primitives::{keccak256, Address, Bytes, TxHash, TxKind, B256, U256, U64};
++use alloy_primitives::{hex, keccak256, Address, Bytes, TxHash, TxKind, B256, U256, U64};
+ use alloy_rpc_types::{
+     anvil::Forking,
+     request::TransactionRequest,
+@@ -187,6 +187,8 @@ pub struct Backend {
+     precompile_factory: Option<Arc<dyn PrecompileFactory>>,
+     /// Prevent race conditions during mining
+     mining: Arc<tokio::sync::Mutex<()>>,
++    /// Only jit one address once
++    jit_addr: Arc<AsyncRwLock<Option<Address>>>,
+ }
+ 
+ impl Backend {
+@@ -266,6 +268,7 @@ impl Backend {
+             slots_in_an_epoch,
+             precompile_factory,
+             mining: Arc::new(tokio::sync::Mutex::new(())),
++            jit_addr: Arc::new(AsyncRwLock::new(None)),
+         };
+ 
+         if let Some(interval_block_time) = automine_block_time {
+@@ -949,6 +952,7 @@ impl Backend {
+             print_logs: self.print_logs,
+             precompile_factory: self.precompile_factory.clone(),
+             alphanet: self.alphanet,
++            jit_addr: None,
+         };
+ 
+         // create a new pending block
+@@ -1023,6 +1027,7 @@ impl Backend {
+                     print_logs: self.print_logs,
+                     alphanet: self.alphanet,
+                     precompile_factory: self.precompile_factory.clone(),
++                    jit_addr: *self.jit_addr.read().await,
+                 };
+                 let executed_tx = executor.execute();
+ 
+@@ -1241,6 +1246,7 @@ impl Backend {
+             blob_hashes: blob_versioned_hashes.unwrap_or_default(),
+             optimism: OptimismFields { enveloped_tx: Some(Bytes::new()), ..Default::default() },
+             authorization_list: authorization_list.map(Into::into),
++            disable_authorization: false,
+         };
+ 
+         if env.block.basefee.is_zero() {
+@@ -2562,6 +2568,33 @@ impl Backend {
+ 
+         Ok(())
+     }
++
++    pub async fn jit_compile(&self, addr: Address) -> Result<(), BlockchainError> {
++        let code = self.get_code(addr, None).await?;
++        if code.is_empty() {
++            return Err(BlockchainError::Internal("Empty code".to_string()))
++        }
++
++        let mut prev_jit_addr = self.jit_addr.write().await;
++        if prev_jit_addr.is_some() {
++            return Err(BlockchainError::Internal("JIT already compiled".to_string()))
++        }
++
++        // write code to /tmp/code.hex
++        std::fs::write("/tmp/code.hex", hex::encode(code)).map_err(|e| {
++            BlockchainError::Internal(format!("Failed to write code to /tmp/code.hex: {e}"))
++        })?;
++
++        let jit_compiler_path =
++            std::env::var("JIT_COMPILER_PATH").unwrap_or_else(|_| "/opt/jit-compiler".to_string());
++        let _ = std::process::Command::new(jit_compiler_path)
++            .output()
++            .map_err(|e| BlockchainError::Internal(format!("Failed to run jit-compile: {e}")))?;
++
++        *prev_jit_addr = Some(addr);
++
++        Ok(())
++    }
+ }
+ 
+ /// Get max nonce from transaction pool by address
+@@ -2686,11 +2719,6 @@ impl TransactionValidator for Backend {
+             if blob_count > MAX_BLOBS_PER_BLOCK {
+                 return Err(InvalidTransactionError::TooManyBlobs(MAX_BLOBS_PER_BLOCK, blob_count))
+             }
+-
+-            // Check for any blob validation errors
+-            if let Err(err) = tx.validate(env.cfg.kzg_settings.get()) {
+-                return Err(InvalidTransactionError::BlobTransactionValidationError(err))
+-            }
+         }
+ 
+         let max_cost = tx.max_cost();
+diff --git a/crates/evm/core/Cargo.toml b/crates/evm/core/Cargo.toml
+index 6fbf67453..8f9934e1e 100644
+--- a/crates/evm/core/Cargo.toml
++++ b/crates/evm/core/Cargo.toml
+@@ -47,6 +47,8 @@ revm = { workspace = true, features = [
+     "c-kzg",
+ ] }
+ revm-inspectors.workspace = true
++revmc-context.workspace = true
++revmc-builtins.workspace = true
+ 
+ auto_impl.workspace = true
+ eyre.workspace = true
+@@ -59,6 +61,7 @@ serde_json.workspace = true
+ thiserror.workspace = true
+ tokio = { workspace = true, features = ["time", "macros"] }
+ tracing.workspace = true
++libc = "0.2"
+ 
+ [dev-dependencies]
+ foundry-test-utils.workspace = true
+diff --git a/crates/evm/core/src/jit_helper.rs b/crates/evm/core/src/jit_helper.rs
+new file mode 100644
+index 000000000..dedc6d3da
+--- /dev/null
++++ b/crates/evm/core/src/jit_helper.rs
+@@ -0,0 +1,112 @@
++use std::sync::Arc;
++
++use alloy_primitives::Address;
++use revm::{handler::register::EvmHandler, Database, Inspector};
++use revmc_builtins as _;
++use revmc_context::{EvmCompilerFn, RawEvmCompilerFn};
++
++use crate::InspectorExt;
++
++#[derive(Clone, Debug)]
++pub struct JitHelper {
++    pub target: Address,
++    pub resolved: Option<EvmCompilerFn>,
++}
++
++impl<DB: Database> Inspector<DB> for JitHelper {}
++
++impl<DB: Database> InspectorExt<DB> for JitHelper {
++    fn get_function(&mut self, addr: Address) -> Option<EvmCompilerFn> {
++        if addr == self.target {
++            if let Some(f) = self.resolved {
++                return Some(f);
++            }
++
++            unsafe {
++                // open libjit.so
++                let libjit =
++                    libc::dlopen(b"libjit.so\0".as_ptr() as *const libc::c_char, libc::RTLD_LAZY);
++                if libjit.is_null() {
++                    return None;
++                }
++
++                // init libjit: void jit_init(void** funcs)
++                let jit_init = libc::dlsym(libjit, b"jit_init\0".as_ptr() as *const libc::c_char);
++                if jit_init.is_null() {
++                    return None;
++                }
++
++                // call jit_init
++                let mut funcs: [*mut libc::c_void; 40] = [
++                    revmc_builtins::__revmc_builtin_panic as _,
++                    revmc_builtins::__revmc_builtin_addmod as _,
++                    revmc_builtins::__revmc_builtin_mulmod as _,
++                    revmc_builtins::__revmc_builtin_exp as _,
++                    revmc_builtins::__revmc_builtin_keccak256 as _,
++                    revmc_builtins::__revmc_builtin_balance as _,
++                    revmc_builtins::__revmc_builtin_calldatacopy as _,
++                    revmc_builtins::__revmc_builtin_codesize as _,
++                    revmc_builtins::__revmc_builtin_codecopy as _,
++                    revmc_builtins::__revmc_builtin_gas_price as _,
++                    revmc_builtins::__revmc_builtin_extcodesize as _,
++                    revmc_builtins::__revmc_builtin_extcodecopy as _,
++                    revmc_builtins::__revmc_builtin_returndatacopy as _,
++                    revmc_builtins::__revmc_builtin_extcodehash as _,
++                    revmc_builtins::__revmc_builtin_blockhash as _,
++                    revmc_builtins::__revmc_builtin_difficulty as _,
++                    revmc_builtins::__revmc_builtin_self_balance as _,
++                    revmc_builtins::__revmc_builtin_blob_hash as _,
++                    revmc_builtins::__revmc_builtin_blob_base_fee as _,
++                    revmc_builtins::__revmc_builtin_sload as _,
++                    revmc_builtins::__revmc_builtin_sstore as _,
++                    revmc_builtins::__revmc_builtin_msize as _,
++                    revmc_builtins::__revmc_builtin_tstore as _,
++                    revmc_builtins::__revmc_builtin_tload as _,
++                    revmc_builtins::__revmc_builtin_mcopy as _,
++                    revmc_builtins::__revmc_builtin_log as _,
++                    revmc_builtins::__revmc_builtin_data_load as _,
++                    revmc_builtins::__revmc_builtin_data_copy as _,
++                    revmc_builtins::__revmc_builtin_returndataload as _,
++                    revmc_builtins::__revmc_builtin_eof_create as _,
++                    revmc_builtins::__revmc_builtin_return_contract as _,
++                    revmc_builtins::__revmc_builtin_create as _,
++                    revmc_builtins::__revmc_builtin_call as _,
++                    revmc_builtins::__revmc_builtin_ext_call as _,
++                    revmc_builtins::__revmc_builtin_do_return as _,
++                    revmc_builtins::__revmc_builtin_selfdestruct as _,
++                    revmc_builtins::__revmc_builtin_func_stack_push as _,
++                    revmc_builtins::__revmc_builtin_func_stack_pop as _,
++                    revmc_builtins::__revmc_builtin_func_stack_grow as _,
++                    revmc_builtins::__revmc_builtin_resize_memory as _,
++                ];
++                let jit_init: extern "C" fn(*mut *mut libc::c_void) = std::mem::transmute(jit_init);
++                jit_init(funcs.as_mut_ptr());
++
++                // get the function pointer
++                let func = libc::dlsym(libjit, b"real_jit_fn\0".as_ptr() as *const libc::c_char);
++                if func.is_null() {
++                    return None;
++                }
++
++                let func: RawEvmCompilerFn = std::mem::transmute(func);
++                self.resolved = Some(EvmCompilerFn::from(func));
++
++                return Some(EvmCompilerFn::from(func));
++            }
++        }
++        None
++    }
++}
++
++pub fn register_handler<DB: Database, I: InspectorExt<DB>>(handler: &mut EvmHandler<'_, I, DB>) {
++    let prev = handler.execution.execute_frame.clone();
++    handler.execution.execute_frame = Arc::new(move |frame, memory, tables, context| {
++        let interpreter = frame.interpreter_mut();
++        let addr = interpreter.contract.target_address;
++        if let Some(f) = context.external.get_function(addr) {
++            Ok(unsafe { f.call_with_interpreter_and_memory(interpreter, memory, context) })
++        } else {
++            prev(frame, memory, tables, context)
++        }
++    });
++}
+diff --git a/crates/evm/core/src/lib.rs b/crates/evm/core/src/lib.rs
+index 26b392c43..338fb3651 100644
+--- a/crates/evm/core/src/lib.rs
++++ b/crates/evm/core/src/lib.rs
+@@ -5,9 +5,11 @@
+ #![cfg_attr(not(test), warn(unused_crate_dependencies))]
+ #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+ 
++use alloy_primitives::Address;
+ use auto_impl::auto_impl;
+ use revm::{inspectors::NoOpInspector, interpreter::CreateInputs, Database, EvmContext, Inspector};
+ use revm_inspectors::access_list::AccessListInspector;
++use revmc_context::EvmCompilerFn;
+ 
+ #[macro_use]
+ extern crate tracing;
+@@ -23,6 +25,7 @@ pub mod backend;
+ pub mod constants;
+ pub mod decode;
+ pub mod fork;
++pub mod jit_helper;
+ pub mod opcodes;
+ pub mod opts;
+ pub mod precompiles;
+@@ -51,6 +54,10 @@ pub trait InspectorExt<DB: Database>: Inspector<DB> {
+     fn is_alphanet(&self) -> bool {
+         false
+     }
++
++    fn get_function(&mut self, _addr: Address) -> Option<EvmCompilerFn> {
++        None
++    }
+ }
+ 
+ impl<DB: Database> InspectorExt<DB> for NoOpInspector {}
+diff --git a/crates/evm/core/src/utils.rs b/crates/evm/core/src/utils.rs
+index 27db37eaf..66a8b03a6 100644
+--- a/crates/evm/core/src/utils.rs
++++ b/crates/evm/core/src/utils.rs
+@@ -1,5 +1,8 @@
+ pub use crate::ic::*;
+-use crate::{constants::DEFAULT_CREATE2_DEPLOYER, precompiles::ALPHANET_P256, InspectorExt};
++use crate::{
++    constants::DEFAULT_CREATE2_DEPLOYER, jit_helper::register_handler, precompiles::ALPHANET_P256,
++    InspectorExt,
++};
+ use alloy_json_abi::{Function, JsonAbi};
+ use alloy_primitives::{Address, Selector, TxKind, U256};
+ use alloy_provider::{
+@@ -232,6 +235,24 @@ pub fn alphanet_handler_register<DB: revm::Database, I: InspectorExt<DB>>(
+     });
+ }
+ 
++pub fn new_evm_with_jit<'a, DB, I>(
++    jit_inspector: I,
++    db: DB,
++    env: revm::primitives::EnvWithHandlerCfg,
++) -> revm::Evm<'a, I, DB>
++where
++    DB: revm::Database,
++    I: InspectorExt<DB>,
++{
++    revm::Evm::builder()
++        .with_db(db)
++        .with_env(env.env)
++        .with_external_context(jit_inspector)
++        .with_handler_cfg(env.handler_cfg)
++        .append_handler_register(register_handler)
++        .build()
++}
++
+ /// Creates a new EVM with the given inspector.
+ pub fn new_evm_with_inspector<'a, DB, I>(
+     db: DB,
+diff --git a/crates/evm/evm/src/lib.rs b/crates/evm/evm/src/lib.rs
+index 8bbd7f141..3d8acb192 100644
+--- a/crates/evm/evm/src/lib.rs
++++ b/crates/evm/evm/src/lib.rs
+@@ -11,7 +11,9 @@ extern crate tracing;
+ pub mod executors;
+ pub mod inspectors;
+ 
+-pub use foundry_evm_core::{backend, constants, decode, fork, opts, utils, InspectorExt};
++pub use foundry_evm_core::{
++    backend, constants, decode, fork, jit_helper, opts, utils, InspectorExt,
++};
+ pub use foundry_evm_coverage as coverage;
+ pub use foundry_evm_fuzz as fuzz;
+ pub use foundry_evm_traces as traces;

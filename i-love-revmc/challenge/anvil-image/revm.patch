@@ -1,0 +1,123 @@
+diff --git a/crates/interpreter/Cargo.toml b/crates/interpreter/Cargo.toml
+index 2721cede..3b8712e4 100644
+--- a/crates/interpreter/Cargo.toml
++++ b/crates/interpreter/Cargo.toml
+@@ -76,5 +76,6 @@ optional_eip3607 = ["revm-primitives/optional_eip3607"]
+ optional_gas_refund = ["revm-primitives/optional_gas_refund"]
+ optional_no_base_fee = ["revm-primitives/optional_no_base_fee"]
+ optional_beneficiary_reward = ["revm-primitives/optional_beneficiary_reward"]
++optional_disable_eip3074 = ["revm-primitives/optional_disable_eip3074"]
+ 
+ kzg-rs = ["revm-primitives/kzg-rs"]
+diff --git a/crates/primitives/Cargo.toml b/crates/primitives/Cargo.toml
+index dae4fc9c..761daddf 100644
+--- a/crates/primitives/Cargo.toml
++++ b/crates/primitives/Cargo.toml
+@@ -104,6 +104,7 @@ optional_eip3607 = []
+ optional_gas_refund = []
+ optional_no_base_fee = []
+ optional_beneficiary_reward = []
++optional_disable_eip3074 = []
+ rand = ["alloy-primitives/rand"]
+ 
+ # See comments in `revm-precompile`
+diff --git a/crates/primitives/src/env.rs b/crates/primitives/src/env.rs
+index ed6bc1b1..2d146933 100644
+--- a/crates/primitives/src/env.rs
++++ b/crates/primitives/src/env.rs
+@@ -16,6 +16,7 @@ use std::vec::Vec;
+ /// EVM environment configuration.
+ #[derive(Clone, Debug, Default, PartialEq, Eq)]
+ #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
++#[repr(C, align(8))]
+ pub struct Env {
+     /// Configuration of the EVM itself.
+     pub cfg: CfgEnv,
+@@ -196,6 +197,11 @@ impl Env {
+             return Err(InvalidTransaction::AuthorizationListNotSupported);
+         }
+ 
++        #[cfg(feature = "optional_disable_eip3074")]
++        if self.tx.disable_authorization && self.tx.authorization_list.is_some() {
++            return Err(InvalidTransaction::AuthorizationListNotSupported);
++        }
++
+         if let Some(auth_list) = &self.tx.authorization_list {
+             // The transaction is considered invalid if the length of authorization_list is zero.
+             if auth_list.is_empty() {
+@@ -285,6 +291,7 @@ impl Env {
+ #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+ #[derive(Clone, Debug, Eq, PartialEq)]
+ #[non_exhaustive]
++#[repr(C, align(8))]
+ pub struct CfgEnv {
+     /// Chain ID of the EVM, it will be compared to the transaction's Chain ID.
+     /// Chain ID is introduced EIP-155
+@@ -301,6 +308,9 @@ pub struct CfgEnv {
+     /// If some it will effects EIP-170: Contract code size limit. Useful to increase this because of tests.
+     /// By default it is 0x6000 (~25kb).
+     pub limit_contract_code_size: Option<usize>,
++    /// Skip balance checks if true. Adds transaction cost to balance to ensure execution doesn't fail.
++    #[cfg(feature = "optional_balance_check")]
++    pub disable_balance_check: bool,
+     /// A hard memory limit in bytes beyond which [crate::result::OutOfGasError::Memory] cannot be resized.
+     ///
+     /// In cases where the gas limit may be extraordinarily high, it is recommended to set this to
+@@ -308,9 +318,6 @@ pub struct CfgEnv {
+     /// EIP-1985.
+     #[cfg(feature = "memory_limit")]
+     pub memory_limit: u64,
+-    /// Skip balance checks if true. Adds transaction cost to balance to ensure execution doesn't fail.
+-    #[cfg(feature = "optional_balance_check")]
+-    pub disable_balance_check: bool,
+     /// There are use cases where it's allowed to provide a gas limit that's higher than a block's gas limit. To that
+     /// end, you can disable the block gas limit validation.
+     /// By default, it is set to `false`.
+@@ -439,6 +446,7 @@ impl Default for CfgEnv {
+ /// The block environment.
+ #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+ #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
++#[repr(C, align(8))]
+ pub struct BlockEnv {
+     /// The number of ancestor blocks of this block (block height).
+     pub number: U256,
+@@ -532,6 +540,7 @@ impl Default for BlockEnv {
+ /// The transaction environment.
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
++#[repr(C, align(8))]
+ pub struct TxEnv {
+     /// Caller aka Author aka transaction signer.
+     pub caller: Address,
+@@ -551,6 +560,10 @@ pub struct TxEnv {
+     /// Caution: If set to `None`, then nonce validation against the account's nonce is skipped: [InvalidTransaction::NonceTooHigh] and [InvalidTransaction::NonceTooLow]
+     pub nonce: Option<u64>,
+ 
++    /// Disable authorization
++    #[cfg(feature = "optional_disable_eip3074")]
++    pub disable_authorization: bool,
++
+     /// The chain ID of the transaction. If set to `None`, no checks are performed.
+     ///
+     /// Incorporated as part of the Spurious Dragon upgrade via [EIP-155].
+@@ -642,6 +655,8 @@ impl Default for TxEnv {
+             authorization_list: None,
+             #[cfg(feature = "optimism")]
+             optimism: OptimismFields::default(),
++            #[cfg(feature = "optional_disable_eip3074")]
++            disable_authorization: false,
+         }
+     }
+ }
+diff --git a/crates/revm/Cargo.toml b/crates/revm/Cargo.toml
+index 431e0167..b2c8eef4 100644
+--- a/crates/revm/Cargo.toml
++++ b/crates/revm/Cargo.toml
+@@ -122,6 +122,7 @@ optional_eip3607 = ["revm-interpreter/optional_eip3607"]
+ optional_gas_refund = ["revm-interpreter/optional_gas_refund"]
+ optional_no_base_fee = ["revm-interpreter/optional_no_base_fee"]
+ optional_beneficiary_reward = ["revm-interpreter/optional_beneficiary_reward"]
++optional_disable_eip3074 = ["revm-interpreter/optional_disable_eip3074"]
+ 
+ # See comments in `revm-precompile`
+ secp256k1 = ["revm-precompile/secp256k1"]

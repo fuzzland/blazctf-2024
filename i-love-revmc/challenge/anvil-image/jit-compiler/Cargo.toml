@@ -1,0 +1,10 @@
+[package]
+name = "jit-compiler"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+revmc-build = { path = "../revmc/crates/revmc-build" }
+
+[dependencies]
+revmc = { path = "../revmc/crates/revmc" }
